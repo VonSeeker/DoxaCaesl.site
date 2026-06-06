@@ -1,0 +1,65 @@
+{
+  "entities": {
+    "Conversation": {
+      "title": "Conversation",
+      "description": "A persistent chat session with the DoxaCare AI assistant",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier of the conversation" },
+        "userId": { "type": "string", "description": "UID of the user who owns the conversation" },
+        "topic": { "type": "string", "description": "Subject or title of the health chat" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp of creation" },
+        "lastMessageAt": { "type": "string", "format": "date-time", "description": "Timestamp of last message" }
+      },
+      "required": ["id", "userId", "topic", "createdAt", "lastMessageAt"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "An individual message within a conversation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier of the message" },
+        "conversationId": { "type": "string", "description": "Parent conversation ID" },
+        "userId": { "type": "string", "description": "UID of the user" },
+        "sender": { "type": "string", "enum": ["user", "model"], "description": "Role of the sender" },
+        "text": { "type": "string", "description": "Content of the message" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Timestamp when sent" },
+        "groundingSources": { "type": "array", "description": "Grounding links or references from Google Search/Maps" }
+      },
+      "required": ["id", "conversationId", "userId", "sender", "text", "timestamp"]
+    },
+    "BookingRequest": {
+      "title": "BookingRequest",
+      "description": "A medical clinic or doctor visit booking request in Sierra Leone",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier of the booking" },
+        "userId": { "type": "string", "description": "UID of the user booking the appointment" },
+        "clinicId": { "type": "string", "description": "Clinic identifier" },
+        "clinicName": { "type": "string", "description": "Name of the health center or hospital" },
+        "patientName": { "type": "string", "description": "Name of the patient" },
+        "contactPhone": { "type": "string", "description": "Sierra Leone phone number for contact" },
+        "date": { "type": "string", "description": "Selected date for appointment" },
+        "time": { "type": "string", "description": "Selected time slot" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "cancelled"], "description": "Status of the appointment" },
+        "notes": { "type": "string", "description": "Optional patient context notes" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp of creation" }
+      },
+      "required": ["id", "userId", "clinicId", "clinicName", "patientName", "contactPhone", "date", "time", "status", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/conversations/{conversationId}": {
+      "schema": "Conversation",
+      "description": "All chat conversations"
+    },
+    "/conversations/{conversationId}/messages/{messageId}": {
+      "schema": "Message",
+      "description": "All messages corresponding to a conversation"
+    },
+    "/booking_requests/{bookingId}": {
+      "schema": "BookingRequest",
+      "description": "All clinical appointment bookings"
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "DoxaCare",
+  "description": "A trusted, culturally relevant health assistant for Sierra Leone, offering symptom checking, clinic finding, and community health guidance in English and Krio.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

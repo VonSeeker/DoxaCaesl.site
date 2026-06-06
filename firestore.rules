@@ -1,0 +1,106 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. Catch-all safety gate deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Reuseable global helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // 2. Conversation validation
+    function isValidConversation(data) {
+      return data.keys().hasAll(['id', 'userId', 'topic', 'createdAt', 'lastMessageAt'])
+        && data.keys().size() == 5
+        && data.id is string && data.id.size() <= 128
+        && data.userId == request.auth.uid
+        && data.topic is string && data.topic.size() <= 500
+        && data.createdAt is string
+        && data.lastMessageAt is string;
+    }
+
+    match /conversations/{conversationId} {
+      allow create: if isSignedIn() 
+        && isValidId(conversationId) 
+        && isValidConversation(request.resource.data);
+        
+      allow get: if isSignedIn() 
+        && resource.data.userId == request.auth.uid;
+        
+      allow list: if isSignedIn() 
+        && resource.data.userId == request.auth.uid;
+        
+      allow update: if isSignedIn() 
+        && isValidConversation(request.resource.data) 
+        && resource.data.userId == request.auth.uid 
+        && request.resource.data.userId == resource.data.userId; // Immutable ownerId
+        
+      allow delete: if isSignedIn() 
+        && resource.data.userId == request.auth.uid;
+
+      // 3. Nested messages validation
+      function isValidMessage(data) {
+        return data.keys().hasAll(['id', 'conversationId', 'userId', 'sender', 'text', 'timestamp'])
+          && data.id is string && data.id.size() <= 128
+          && data.conversationId == conversationId
+          && data.userId == request.auth.uid
+          && data.sender in ['user', 'model']
+          && data.text is string && data.text.size() <= 10000
+          && data.timestamp is string;
+      }
+
+      match /messages/{messageId} {
+        allow create: if isSignedIn()
+          && isValidId(messageId)
+          && isValidMessage(request.resource.data)
+          // Master Gate security check: verify parent conversation belongs to the user
+          && get(/databases/$(database)/documents/conversations/$(conversationId)).data.userId == request.auth.uid;
+          
+        allow read, list: if isSignedIn()
+          && get(/databases/$(database)/documents/conversations/$(conversationId)).data.userId == request.auth.uid;
+          
+        allow update, delete: if false; // Messages are immutable
+      }
+    }
+
+    // 4. Booking requests validation
+    function isValidBooking(data) {
+      return data.keys().hasAll(['id', 'userId', 'clinicId', 'clinicName', 'patientName', 'contactPhone', 'date', 'time', 'status', 'createdAt'])
+        && data.id is string && data.id.size() <= 128
+        && data.userId == request.auth.uid
+        && data.clinicId is string && data.clinicId.size() <= 128
+        && data.clinicName is string && data.clinicName.size() <= 200
+        && data.patientName is string && data.patientName.size() <= 200
+        && data.contactPhone is string && data.contactPhone.size() <= 32
+        && data.date is string && data.date.size() <= 32
+        && data.time is string && data.time.size() <= 32
+        && data.status in ['pending', 'confirmed', 'cancelled']
+        && data.createdAt is string;
+    }
+
+    match /booking_requests/{bookingId} {
+      allow create: if isSignedIn() 
+        && isValidId(bookingId) 
+        && isValidBooking(request.resource.data);
+        
+      allow get, list: if isSignedIn() 
+        && resource.data.userId == request.auth.uid;
+        
+      allow update: if isSignedIn() 
+        && isValidBooking(request.resource.data) 
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == resource.data.userId; // Immutable ownerId
+        
+      allow delete: if isSignedIn() 
+        && resource.data.userId == request.auth.uid;
+    }
+  }
+}
